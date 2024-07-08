@@ -1,0 +1,46 @@
+version: '3.3'
+
+services:
+  web:
+    build: .
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - "8080:8000"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: $DB_NAME
+      POSTGRES_USER: $DB_USER
+      POSTGRES_PASSWORD: $DB_PASSWORD
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  migration:
+    build: .
+    command: >
+      sh -c "python manage.py makemigrations &&
+      python manage.py migrate"
+    volumes:
+      - .:/usr/src/app/
+    depends_on:
+      - db
+  pytest:
+    build: .
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - db
+    command: [ "pytest" ]
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings
+
+volumes:
+  postgres_data:
