@@ -18,23 +18,7 @@ class ProductViewSet(ModelViewSet):
     filterset_fields = ('category',)
 
     def create(self, request, *args, **kwargs):
-        category_name = request.data.get('category')
-
-        # попытка найти категорию
-        try:
-            category_instance = Category.objects.get(name=category_name)
-        except:
-            category_serializer = CategorySerializer(data={'name': category_name})
-            if category_serializer.is_valid():
-                category_instance = category_serializer.save()
-            else:
-                return Response(category_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        # изменение запроса для добавления ID категории
-        request.data['category'] = category_instance.id
-
-        # сохранение продукта
         product_serializer = self.get_serializer(data=request.data)
-        product_serializer.is_valid()
-        product_serializer.save()
+        product_serializer.is_valid(raise_exception=True)
+        product = product_serializer.save()
         return Response(product_serializer.data, status=status.HTTP_201_CREATED)
