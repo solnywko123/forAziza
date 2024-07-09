@@ -10,7 +10,7 @@ class Product(models.Model):
     price = models.IntegerField()
     description = models.TextField(blank=False, null=False)
     category = models.ForeignKey(Category, related_name='products', on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='images/')
+    image = models.ImageField(upload_to='images/', null=True, blank=True)
 
     def __str__(self):
         return self.title

@@ -4,55 +4,54 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework.authtoken.models import Token
 
 from django.contrib.auth import get_user_model
-from category.models import Category
 from product.models import Product
+from tests.factories import CategoryFactory, ProductFactory
 
 User = get_user_model()
+
 
 class ProductAPITest(APITestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(username='testuser', password='testpassword')
-        self.token = Token.objects.create(user=self.user)
-        self.client = APIClient()
-        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
+        self.client.force_login(self.user)
+        self.category = CategoryFactory(name='Test Category')  # Используем фабрику для создания категории
+        self.product = ProductFactory()
 
-        # Create a category
-        self.category = Category.objects.create(name='Test Category')
-
-    # def test_create_product(self):
-    #     url = reverse('product-list')
-    #     data = {
-    #         'title': 'New Product',
-    #         'price': 100,
-    #         'description': 'Product description',
-    #         'category': self.category.name,  # Use category name for simplicity
-    #         'image': ''  # Add image data if required
-    #     }
-    #     response = self.client.post(url, data, format='json')
-    #     print(response.data)
-    #     self.assertEqual(Product.objects.count(), 1)
-    #     self.assertEqual(Product.objects.last().title, 'New Product')
+    def test_create_product(self):
+        url = reverse('product-list')
+        product_data = ProductFactory.build()
+        data = {
+            'title': product_data.title,
+            'price': product_data.price,
+            'description': product_data.description,
+            'category': self.category.id,
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Product.objects.count(), 2)
+        self.assertEqual(Product.objects.last().title, product_data.title)
 
     def test_read_product(self):
-        product = Product.objects.create(title='Test Product', price=50, description='Product description', category=self.category)
+        product = ProductFactory(title='Test Product', price=50, description='Product description',
+                                 category=self.category)  # Используем фабрику для создания продукта
         url = reverse('product-detail', args=[product.pk])
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Test Product')
-    #
-    # def test_update_product(self):
-    #     product = Product.objects.create(title='Test Product', price=50, description='Product description', category=self.category)
-    #     url = reverse('product-detail', args=[product.pk])
-    #     data = {'title': 'Updated Product'}
-    #     response = self.client.put(url, data, format='json')
-    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #     product.refresh_from_db()
-    #     self.assertEqual(product.title, 'Updated Product')
+
+    def test_update_product(self):
+        updated_title = 'Updated Product'
+        data = {'title': updated_title}
+        with self.assertNumQueries(5):
+            res = self.client.patch(reverse("product-detail", kwargs={"pk": self.product.pk}), data=data)
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            my_product = Product.objects.first()
+
+            self.assertEqual(my_product.title, data["title"])
 
     def test_delete_product(self):
-        product = Product.objects.create(title='Test Product', price=50, description='Product description', category=self.category)
-        url = reverse('product-detail', args=[product.pk])
+        url = reverse('product-detail', args=[self.product.pk])
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Product.objects.count(), 0)
