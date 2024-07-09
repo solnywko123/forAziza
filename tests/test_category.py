@@ -1,28 +1,45 @@
-from django.test import TestCase
+from rest_framework import status
+from rest_framework.authtoken.models import Token
+from rest_framework.reverse import reverse
+from rest_framework.test import APITestCase, APIClient
+
+from account.serializers import User
 from category.models import Category
 
 
-class CategoryModelTest(TestCase):
+class CategoryAPITest(APITestCase):
 
     def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='testpassword')
+        self.token = Token.objects.create(user=self.user)
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
         self.category = Category.objects.create(name='Test Category')
 
     def test_create_category(self):
-        category = Category.objects.create(name='New Category')
-        with self.assertNumQueries(1):
-            self.assertEqual(Category.objects.count(), 2)
-            self.assertEqual(category.name, 'New Category')
+        url = reverse('category-list')
+        data = {'name': 'New Category'}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Category.objects.count(), 2)
+        self.assertEqual(Category.objects.last().name, 'New Category')
 
     def test_read_category(self):
-        category = Category.objects.get(name='Test Category')
-        self.assertEqual(category.name, 'Test Category')
+        url = reverse('category-detail', args=[self.category.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'Test Category')
 
     def test_update_category(self):
-        self.category.name = 'Updated Category'
-        self.category.save()
+        url = reverse('category-detail', args=[self.category.pk])
+        data = {'name': 'Updated Category'}
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.category.refresh_from_db()
         self.assertEqual(self.category.name, 'Updated Category')
 
     def test_delete_category(self):
-        self.category.delete()
+        url = reverse('category-detail', args=[self.category.pk])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Category.objects.count(), 0)

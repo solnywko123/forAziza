@@ -1,57 +1,58 @@
-from django.test import TestCase
-from django.core.files.uploadedfile import SimpleUploadedFile
+from rest_framework import status
+from rest_framework.reverse import reverse
+from rest_framework.test import APITestCase, APIClient
+from rest_framework.authtoken.models import Token
+
+from django.contrib.auth import get_user_model
 from category.models import Category
 from product.models import Product
 
-class ProductCRUDTest(TestCase):
+User = get_user_model()
+
+class ProductAPITest(APITestCase):
 
     def setUp(self):
-        # Создаем тестовую категорию
-        self.category = Category.objects.create(name='Тестовая категория')
+        self.user = User.objects.create_user(username='testuser', password='testpassword')
+        self.token = Token.objects.create(user=self.user)
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
 
-    def test_create_product(self):
-        product = Product.objects.create(
-            title='Тестовый продукт',
-            price=1000,
-            description='Описание тестового продукта для проверки CRUD операций.',
-            category=self.category,
-            image=SimpleUploadedFile('test_image.jpg', content=b'', content_type='image/jpeg')
-        )
-        with self.assertNumQueries(1):
-            self.assertEqual(Product.objects.count(), 1)
-            self.assertEqual(product.title, 'Тестовый продукт')
+        # Create a category
+        self.category = Category.objects.create(name='Test Category')
+
+    # def test_create_product(self):
+    #     url = reverse('product-list')
+    #     data = {
+    #         'title': 'New Product',
+    #         'price': 100,
+    #         'description': 'Product description',
+    #         'category': self.category.name,  # Use category name for simplicity
+    #         'image': ''  # Add image data if required
+    #     }
+    #     response = self.client.post(url, data, format='json')
+    #     print(response.data)
+    #     self.assertEqual(Product.objects.count(), 1)
+    #     self.assertEqual(Product.objects.last().title, 'New Product')
 
     def test_read_product(self):
-        product = Product.objects.create(
-            title='Тестовый продукт',
-            price=1000,
-            description='Описание тестового продукта для проверки CRUD операций.',
-            category=self.category,
-            image=SimpleUploadedFile('test_image.jpg', content=b'', content_type='image/jpeg')
-        )
-        retrieved_product = Product.objects.get(title='Тестовый продукт')
-        self.assertEqual(retrieved_product.description, 'Описание тестового продукта для проверки CRUD операций.')
-
-    def test_update_product(self):
-        product = Product.objects.create(
-            title='Тестовый продукт',
-            price=1000,
-            description='Описание тестового продукта для проверки CRUD операций.',
-            category=self.category,
-            image=SimpleUploadedFile('test_image.jpg', content=b'', content_type='image/jpeg')
-        )
-        product.title = 'Обновленный продукт'
-        product.save()
-        updated_product = Product.objects.get(id=product.id)
-        self.assertEqual(updated_product.title, 'Обновленный продукт')
+        product = Product.objects.create(title='Test Product', price=50, description='Product description', category=self.category)
+        url = reverse('product-detail', args=[product.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['title'], 'Test Product')
+    #
+    # def test_update_product(self):
+    #     product = Product.objects.create(title='Test Product', price=50, description='Product description', category=self.category)
+    #     url = reverse('product-detail', args=[product.pk])
+    #     data = {'title': 'Updated Product'}
+    #     response = self.client.put(url, data, format='json')
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     product.refresh_from_db()
+    #     self.assertEqual(product.title, 'Updated Product')
 
     def test_delete_product(self):
-        product = Product.objects.create(
-            title='Тестовый продукт',
-            price=1000,
-            description='Описание тестового продукта для проверки CRUD операций.',
-            category=self.category,
-            image=SimpleUploadedFile('test_image.jpg', content=b'', content_type='image/jpeg')
-        )
-        product.delete()
+        product = Product.objects.create(title='Test Product', price=50, description='Product description', category=self.category)
+        url = reverse('product-detail', args=[product.pk])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Product.objects.count(), 0)

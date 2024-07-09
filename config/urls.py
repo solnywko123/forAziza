@@ -21,8 +21,8 @@ schema_view = get_schema_view(
 )
 
 router = SimpleRouter()
-router.register('category', CategoryViewSet)
-router.register('product', ProductViewSet)
+router.register('product', ProductViewSet, basename='product')
+router.register('category', CategoryViewSet, basename='category')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
