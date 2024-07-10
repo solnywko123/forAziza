@@ -16,3 +16,8 @@ class ProductSerializer(serializers.ModelSerializer):
         category, created = Category.objects.get_or_create(name=category_name)
         product = Product.objects.create(category=category, **validated_data)
         return product
+
+
+class ProductByCategorySerializer(serializers.Serializer):
+    category_id = serializers.IntegerField()
+
