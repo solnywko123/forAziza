@@ -18,6 +18,6 @@ class ProductSerializer(serializers.ModelSerializer):
         return product
 
 
-class ProductByCategorySerializer(serializers.Serializer):
-    category_id = serializers.IntegerField()
+# class ProductByCategorySerializer(serializers.Serializer):
+#     category_id = serializers.IntegerField()
 
